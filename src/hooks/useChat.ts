@@ -115,7 +115,8 @@ export function useChat() {
                 }));
               }
             } catch (parseErr) {
-              if (parseErr instanceof Error && parseErr.message !== "Unexpected end of JSON input") {
+              // Only re-throw non-JSON-parse errors
+              if (!(parseErr instanceof SyntaxError)) {
                 throw parseErr;
               }
             }

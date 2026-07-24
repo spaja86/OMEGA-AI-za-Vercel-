@@ -10,7 +10,7 @@
  * the underlying persistence layer is swapped out.
  */
 
-import { randomUUID } from "crypto";
+import { v4 as randomUUID } from "uuid";
 import type { Conversation, ConversationSummary, Message } from "./types";
 import { getFlags } from "./flags";
 
