@@ -16,6 +16,8 @@ export interface Flags {
   modelSelectorVisible: boolean;
   /** Log token usage to the console (server-side) */
   usageLoggingEnabled: boolean;
+  /** Enable the STATISTIČKA MATRICA analytics dashboard */
+  statsEnabled: boolean;
 }
 
 export function getFlags(): Flags {
@@ -25,6 +27,7 @@ export function getFlags(): Flags {
     moderationEnabled: env("DIAJOLOGIJA_MODERATION", "false"),
     modelSelectorVisible: env("DIAJOLOGIJA_MODEL_SELECTOR", "false"),
     usageLoggingEnabled: env("DIAJOLOGIJA_USAGE_LOGGING", "true"),
+    statsEnabled: env("DIAJOLOGIJA_STATS_ENABLED", "true"),
   };
 }
 

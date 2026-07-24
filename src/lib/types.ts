@@ -58,3 +58,23 @@ export interface FeedbackRequest {
   messageId: string;
   value: "up" | "down";
 }
+
+/** Aggregated statistics snapshot returned by GET /api/stats */
+export interface StatsSnapshot {
+  totalConversations: number;
+  totalMessages: number; // user + assistant only (no system)
+  totalTokens: number;
+  averageTokensPerReply: number;
+  averageMessagesPerConversation: number;
+  feedbackUp: number;
+  feedbackDown: number;
+  /** Ratio of positive feedback: up / (up + down), or null if no feedback given */
+  feedbackRatio: number | null;
+  /** model → number of conversations that used it */
+  modelBreakdown: Record<string, number>;
+  conversationsLast24h: number;
+  conversationsLast7d: number;
+  /** Top 5 conversations by non-system message count */
+  topConversationsByLength: ConversationSummary[];
+  generatedAt: string; // ISO-8601
+}

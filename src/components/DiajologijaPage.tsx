@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useChat } from "@/hooks/useChat";
 import { MessageList } from "@/components/MessageList";
 import { ChatInput } from "@/components/ChatInput";
@@ -46,6 +47,12 @@ export default function DiajologijaPage() {
               {conversation.title}
             </span>
           )}
+          <Link
+            href="/statisticka-matrica"
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Matrica
+          </Link>
           <button
             onClick={() => resetConversation()}
             className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
