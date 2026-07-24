@@ -4,7 +4,7 @@
  * Directly calls `getStats()` server-side (no HTTP round-trip) and passes
  * the snapshot to the client component for rendering.
  *
- * Returns a 403 page when the `statsEnabled` feature flag is off.
+ * Returns a 404 page when the `statsEnabled` feature flag is off.
  */
 
 import { notFound } from "next/navigation";

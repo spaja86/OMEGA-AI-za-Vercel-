@@ -8,7 +8,7 @@ interface Props {
 }
 
 function fmt(n: number, decimals = 0): string {
-  return n.toLocaleString("en-US", {
+  return n.toLocaleString(undefined, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
