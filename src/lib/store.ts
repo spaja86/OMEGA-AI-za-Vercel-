@@ -11,7 +11,7 @@
  */
 
 import { v4 as randomUUID } from "uuid";
-import type { Conversation, ConversationSummary, Message } from "./types";
+import type { Conversation, ConversationSummary, Message, StatsSnapshot } from "./types";
 import { getFlags } from "./flags";
 
 const store = new Map<string, Conversation>();
@@ -111,4 +111,78 @@ export async function setMessageFeedback(
 
 export async function deleteConversation(id: string): Promise<void> {
   store.delete(id);
+}
+
+export async function getStats(): Promise<StatsSnapshot> {
+  const now = Date.now();
+  const ms24h = 24 * 60 * 60 * 1000;
+  const ms7d = 7 * 24 * 60 * 60 * 1000;
+
+  let totalMessages = 0;
+  let totalTokens = 0;
+  let assistantReplies = 0;
+  let feedbackUp = 0;
+  let feedbackDown = 0;
+  let conversationsLast24h = 0;
+  let conversationsLast7d = 0;
+  const modelBreakdown: Record<string, number> = {};
+
+  for (const conv of store.values()) {
+    // Model breakdown
+    modelBreakdown[conv.model] = (modelBreakdown[conv.model] ?? 0) + 1;
+
+    // Time windows
+    const age = now - new Date(conv.createdAt).getTime();
+    if (age <= ms24h) conversationsLast24h++;
+    if (age <= ms7d) conversationsLast7d++;
+
+    for (const msg of conv.messages) {
+      if (msg.role === "system") continue;
+      totalMessages++;
+
+      if (msg.role === "assistant") {
+        assistantReplies++;
+        totalTokens += msg.tokens ?? 0;
+      }
+
+      if (msg.feedback === "up") feedbackUp++;
+      else if (msg.feedback === "down") feedbackDown++;
+    }
+  }
+
+  const totalConversations = store.size;
+  const averageTokensPerReply =
+    assistantReplies > 0 ? totalTokens / assistantReplies : 0;
+  const averageMessagesPerConversation =
+    totalConversations > 0 ? totalMessages / totalConversations : 0;
+  const totalFeedback = feedbackUp + feedbackDown;
+  const feedbackRatio = totalFeedback > 0 ? feedbackUp / totalFeedback : null;
+
+  const topConversationsByLength = Array.from(store.values())
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      model: c.model,
+      messageCount: c.messages.filter((m) => m.role !== "system").length,
+    }))
+    .sort((a, b) => b.messageCount - a.messageCount)
+    .slice(0, 5);
+
+  return {
+    totalConversations,
+    totalMessages,
+    totalTokens,
+    averageTokensPerReply,
+    averageMessagesPerConversation,
+    feedbackUp,
+    feedbackDown,
+    feedbackRatio,
+    modelBreakdown,
+    conversationsLast24h,
+    conversationsLast7d,
+    topConversationsByLength,
+    generatedAt: new Date().toISOString(),
+  };
 }
