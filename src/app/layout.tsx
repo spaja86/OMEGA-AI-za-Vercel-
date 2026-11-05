@@ -14,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans"><aside className="border-b border-amber-700 bg-amber-950 p-3 text-center text-sm text-amber-100">
+        SPAJA · OMEGA demonstracija. Bez AI ključa odgovori su probni. Razgovori pripadaju ovoj sesiji pregledača, traju najviše jedan sat i nestaju pri restartu. Ne unosite poverljive podatke.
+      </aside>{children}</body>
     </html>
   );
 }

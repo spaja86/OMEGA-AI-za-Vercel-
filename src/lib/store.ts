@@ -11,12 +11,50 @@
  */
 
 import { v4 as randomUUID } from "uuid";
+import { randomBytes, createHash } from "node:crypto";
+import { cookies, headers } from "next/headers";
 import type { Conversation, ConversationSummary, Message, StatsSnapshot } from "./types";
 import { getFlags } from "./flags";
 
-const store = new Map<string, Conversation>();
+// Anonymous browser sessions are capabilities, not verified user identities.
+// Memory-only demo: sessions expire after one hour and disappear on restart.
+const cookieName = "omega_session";
+type Session = { expiresAt: number; conversations: Map<string, Conversation> };
+const memory = globalThis as typeof globalThis & { omegaSessions?: Map<string, Session> };
+const sessions = memory.omegaSessions ??= new Map<string, Session>();
+
+async function sessionStore(create = false, mutation = false): Promise<Map<string, Conversation>> {
+  if (create || mutation) {
+    const h = await headers();
+    const origin = h.get("origin");
+    if (h.get("sec-fetch-site") === "cross-site" ||
+        (origin && new URL(origin).host !== h.get("host"))) {
+      throw new Error("Cross-origin writes are not allowed");
+    }
+  }
+  const jar = await cookies();
+  const token = jar.get(cookieName)?.value;
+  const key = token && /^[a-f0-9]{64}$/.test(token)
+    ? createHash("sha256").update(token).digest("hex") : undefined;
+  const now = Date.now();
+  for (const [id, entry] of sessions) if (entry.expiresAt <= now) sessions.delete(id);
+  const existing = key ? sessions.get(key) : undefined;
+  if (existing) return existing.conversations;
+  if (!create) return new Map();
+  if (sessions.size >= 100) throw new Error("Demo capacity reached; try again later");
+  const nextToken = randomBytes(32).toString("hex");
+  const entry: Session = { expiresAt: now + 3600000, conversations: new Map() };
+  sessions.set(createHash("sha256").update(nextToken).digest("hex"), entry);
+  jar.set(cookieName, nextToken, {
+    httpOnly: true, secure: process.env.NODE_ENV === "production",
+    sameSite: "strict", path: "/", maxAge: 3600,
+  });
+  return entry.conversations;
+}
 
 export async function createConversation(model: string): Promise<Conversation> {
+  const store = await sessionStore(true);
+  if (store.size >= 5) throw new Error("Demo limit: five conversations per session");
   const flags = getFlags();
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -52,10 +90,12 @@ export async function createConversation(model: string): Promise<Conversation> {
 export async function getConversation(
   id: string
 ): Promise<Conversation | null> {
+  const store = await sessionStore();
   return store.get(id) ?? null;
 }
 
 export async function listConversations(): Promise<ConversationSummary[]> {
+  const store = await sessionStore();
   return Array.from(store.values())
     .sort(
       (a, b) =>
@@ -75,9 +115,13 @@ export async function appendMessage(
   conversationId: string,
   message: Omit<Message, "id" | "createdAt">
 ): Promise<Message> {
+  const store = await sessionStore(false, true);
   const conv = store.get(conversationId);
   if (!conv) throw new Error(`Conversation not found: ${conversationId}`);
 
+  if (message.content.length > 2000 || conv.messages.length >= 40) {
+    throw new Error("Demo message limit reached");
+  }
   const msg: Message = {
     ...message,
     id: randomUUID(),
@@ -101,6 +145,7 @@ export async function setMessageFeedback(
   messageId: string,
   value: "up" | "down"
 ): Promise<void> {
+  const store = await sessionStore(false, true);
   const conv = store.get(conversationId);
   if (!conv) throw new Error(`Conversation not found: ${conversationId}`);
   const msg = conv.messages.find((m) => m.id === messageId);
@@ -110,10 +155,12 @@ export async function setMessageFeedback(
 }
 
 export async function deleteConversation(id: string): Promise<void> {
+  const store = await sessionStore(false, true);
   store.delete(id);
 }
 
 export async function getStats(): Promise<StatsSnapshot> {
+  const store = await sessionStore();
   const now = Date.now();
   const ms24h = 24 * 60 * 60 * 1000;
   const ms7d = 7 * 24 * 60 * 60 * 1000;

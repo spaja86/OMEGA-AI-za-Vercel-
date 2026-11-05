@@ -60,7 +60,7 @@ export async function moderate(text: string): Promise<string | null> {
 function buildFallbackStream(): ReadableStream<Uint8Array> {
   const reply =
     "⚠️ **Fallback mode** – OPENAI_API_KEY is not set. " +
-    "Configure it in your Vercel project settings to enable real AI responses.";
+    "Ovo je probni odgovor. Prava AI veza još nije aktivirana.";
 
   return new ReadableStream({
     start(controller) {
