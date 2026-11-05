@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  const content = (body.content ?? "").trim();
+  const content = typeof body.content === "string" ? body.content.trim() : "";
   if (!content) {
     return new Response(
       JSON.stringify({ error: "content is required", status: 400 }),
@@ -50,6 +50,9 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
+  if (content.length > 2000 || conv.messages.length > 38) {
+    return Response.json({ error: "Demo limit: 2000 characters per message and 40 messages per conversation" }, { status: 413 });
+  }
   const flags = getFlags();
 
   // Content moderation (optional)
@@ -82,14 +85,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const llmStream = await streamCompletion({
     messages: updatedConv.messages,
     model: body.model ?? conv.model,
-    onUsage: async ({ promptTokens, completionTokens }) => {
-      // Persist assistant message with token counts after streaming completes
-      await appendMessage(id, {
-        role: "assistant",
-        content: assistantText,
-        tokens: promptTokens + completionTokens,
-      });
-    },
+
   });
 
   // Wrap stream to intercept deltas and build assistantText
@@ -125,6 +121,9 @@ export async function POST(request: NextRequest, { params }: Params) {
 
         controller.enqueue(value);
       }
+      if (assistantText) await appendMessage(id, {
+        role: "assistant", content: assistantText.slice(0, 2000),
+      });
       controller.close();
     },
   });
